@@ -109,13 +109,19 @@ const LoadApp = (props) => {
 
       var {sounds} = result;
       var downloadArray = newSounds;
+      var deleteArray = sounds;
 
       if (result && sounds) {
         downloadArray = newSounds.filter((i) => {
           if (sounds.findIndex((s) => s.key === i.key) == -1) return true;
         });
+
+        deleteArray = sounds.filter((i) => {
+          if (newSounds.findIndex((n) => n.key == i.key) == -1) return true;
+        });
       }
 
+      console.log(deleteArray);
       var downloadProm = downloadArray.map(async (item, index) => {
         let url = `${secure.api}/sounds/${item.path}`;
         let file = await RNFetchBlob.config({
