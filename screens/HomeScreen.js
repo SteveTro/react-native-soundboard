@@ -18,6 +18,7 @@ const HomeScreen = ({navigation}) => {
   const [player, setPlayer] = useState({isPlaying: false, item: null});
 
   const whoosh = useRef(null);
+  Sound.setCategory('Playback');
 
   useEffect(() => {
     loadData();
@@ -103,11 +104,20 @@ const HomeScreen = ({navigation}) => {
   const playItem = async (item) => {
     if (player.isPlaying) stopItem(player.item);
 
+    console.log(
+      'Existiert: ',
+      await RNFetchBlob.fs.exists(
+        `${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`,
+      ),
+    );
+
     setPlayer({...player, isPlaying: true, item});
+    console.log(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`);
+    console.log(encodeURI(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`));
     try {
       whoosh.current = new Sound(
-        `${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`,
-        Sound.MAIN_BUNDLE,
+        encodeURI(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`),
+        '',
         (error) => {
           if (error) {
             console.log(error);
