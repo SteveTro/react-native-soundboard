@@ -158,11 +158,12 @@ const LoadApp = (props) => {
   const getPermission = async () => {
     let result = await request(
       Platform.select({
-        ios: PERMISSIONS.IOS.STOREKIT,
+        ios: PERMISSIONS.IOS.MEDIA_LIBRARY,
         android: PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE,
       }),
     );
     console.log(result);
+    alert(result);
     if (result === 'granted') {
       await AsyncStorage.setItem(constants.didStart, 'true');
       setFirstRun(false);
