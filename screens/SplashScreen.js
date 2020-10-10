@@ -14,6 +14,7 @@ import {Button, Container, Content} from 'native-base';
 import {check, PERMISSIONS, request} from 'react-native-permissions';
 import SplashScreen from 'react-native-splash-screen';
 import secure from '../constants/secure';
+import functions from './../constants/functions';
 
 const LoadApp = (props) => {
   const [loading, setloading] = useState(true);
@@ -47,8 +48,9 @@ const LoadApp = (props) => {
     try {
       try {
         var lastAppUpdate = await AsyncStorage.getItem(constants.lastUpdated);
-      } catch (error) {
         lastAppUpdate = parseInt(lastAppUpdate);
+      } catch (error) {
+        console.log(error);
       }
 
       if (!lastAppUpdate) lastAppUpdate = 0;
@@ -67,10 +69,13 @@ const LoadApp = (props) => {
       if (result) {
         var {lastUpdated, sounds} = result.data;
         console.log(lastUpdated, '>', lastAppUpdate);
+        console.log(lastUpdated > lastAppUpdate);
+
         if (lastUpdated > lastAppUpdate) {
+          console.log('Going to update');
           setupdating({...updating, message: 'Check for new files ...'});
 
-          updateApp(sounds).then((result) => {
+          functions.updateApp(sounds, setupdating, updating).then((result) => {
             props.onLoaded();
           });
         } else {
@@ -78,81 +83,11 @@ const LoadApp = (props) => {
         }
       } else {
         setupdating({...updating, message: 'No Result from Server'});
+        props.onLoaded();
       }
     } catch (error) {
       console.log(error);
     }
-  };
-
-  const updateApp = async (newSounds) => {
-    return new Promise(async (resolve, reject) => {
-      let dD = RNFetchBlob.fs.dirs.DocumentDir;
-
-      setupdating({...updating, message: 'Downloading new sounds ...'});
-      var filePath = `${dD}/fileList.json`;
-      var result = null;
-      try {
-        result = await RNFetchBlob.fs.exists(filePath);
-        if (result) {
-          result = await RNFetchBlob.fs.readFile(filePath);
-          result = JSON.parse(result);
-        } else {
-          result = {
-            lastUpdated: Date.now(),
-            sounds: [],
-          };
-          RNFetchBlob.fs.createFile(filePath, JSON.stringify(result));
-        }
-      } catch (error) {
-        console.log(error);
-      }
-
-      var {sounds} = result;
-      var downloadArray = newSounds;
-      var deleteArray = sounds;
-
-      if (result && sounds) {
-        downloadArray = newSounds.filter((i) => {
-          if (sounds.findIndex((s) => s.key === i.key) == -1) return true;
-        });
-
-        deleteArray = sounds.filter((i) => {
-          if (newSounds.findIndex((n) => n.key == i.key) == -1) return true;
-        });
-      }
-
-      console.log(deleteArray);
-      var downloadProm = downloadArray.map(async (item, index) => {
-        let url = `${secure.api}/sounds/${item.path}`;
-        let file = await RNFetchBlob.config({
-          fileCache: true,
-          path: `${dD}/${item.path}`,
-        }).fetch('GET', url, {
-          Authorization: secure.bearer,
-        });
-        var path = await file.path();
-        setupdating({
-          ...updating,
-          message: `Download file ${index + 1} of  ${downloadProm.length}`,
-        });
-        return path;
-      });
-      setupdating({
-        ...updating,
-        message: 'Download file 1 of ' + downloadProm.length,
-      });
-
-      await Promise.all(downloadProm).catch((error) => console.log(error));
-      let file = await RNFetchBlob.config({
-        fileCache: true,
-        path: `${dD}/fileList.json`,
-      }).fetch('GET', `${secure.api}/overview.json`, {
-        Authorization: secure.bearer,
-      });
-      console.log(await file.path());
-      await AsyncStorage.setItem(constants.lastUpdated, Date.now().toString());
-      resolve();
-    });
   };
 
   const getPermission = async () => {
@@ -162,8 +97,7 @@ const LoadApp = (props) => {
         android: PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE,
       }),
     );
-    console.log(result);
-    alert(result);
+
     if (result === 'granted') {
       await AsyncStorage.setItem(constants.didStart, 'true');
       setFirstRun(false);

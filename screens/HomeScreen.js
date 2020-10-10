@@ -1,5 +1,5 @@
 import React, {useEffect, useState, useRef} from 'react';
-import {View, Text, FlatList, StyleSheet} from 'react-native';
+import {View, Text, FlatList, StyleSheet, Platform} from 'react-native';
 import RNFetchBlob from 'rn-fetch-blob';
 import FlatListItem from '../components/FlatListItem';
 import {Button, Icon, Content, Input, Item} from 'native-base';
@@ -9,7 +9,7 @@ import SearchBar from './../components/SearchBar';
 import constants from '../constants/constants';
 import Sound, {MAIN_BUNDLE} from 'react-native-sound';
 
-const HomeScreen = ({navigation}) => {
+const HomeScreen = (props, {navigation}) => {
   const [index, setIndex] = useState(0);
   const [data, setdata] = useState({sounds: [], filtered: []});
   const [favorite, setFavorite] = useState({sounds: [], filtered: []});
@@ -21,8 +21,9 @@ const HomeScreen = ({navigation}) => {
   Sound.setCategory('Playback');
 
   useEffect(() => {
+    console.log('use effect');
     loadData();
-  }, []);
+  }, [props]);
 
   const loadData = async () => {
     let file = await RNFetchBlob.fs.readFile(
@@ -114,28 +115,31 @@ const HomeScreen = ({navigation}) => {
     setPlayer({...player, isPlaying: true, item});
     console.log(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`);
     console.log(encodeURI(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`));
+
+    var path =
+      Platform.OS == 'android'
+        ? `${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`
+        : encodeURI(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`);
+    var bundle = Platform.OS == 'android' ? Sound.MAIN_BUNDLE : '';
+
     try {
-      whoosh.current = new Sound(
-        encodeURI(`${RNFetchBlob.fs.dirs.DocumentDir}/${item.path}`),
-        '',
-        (error) => {
-          if (error) {
-            console.log(error);
-            return;
-          }
+      whoosh.current = new Sound(path, bundle, (error) => {
+        if (error) {
+          console.log(error);
+          return;
+        }
 
-          var {filtered} = data;
-          var i = filtered.indexOf(item);
-          filtered[i].playing = 'true';
+        var {filtered} = data;
+        var i = filtered.indexOf(item);
+        filtered[i].playing = 'true';
+        setdata({...data, filtered});
+
+        whoosh.current.play((success) => {
+          whoosh.current.release();
+          filtered[i].playing = 'false';
           setdata({...data, filtered});
-
-          whoosh.current.play((success) => {
-            whoosh.current.release();
-            filtered[i].playing = 'false';
-            setdata({...data, filtered});
-          });
-        },
-      );
+        });
+      });
     } catch (error) {
       console.log(error);
     }
